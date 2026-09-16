@@ -672,7 +672,7 @@ Evaluate both on a series of perturbed environments (increasing noise, different
 
 | Phase | Status | Start | End | Tag | Notes |
 |---|---|---|---|---|---|
-| 0 | ⬜ Not started | | | | |
+| 0 | ✅ Done | 2026-09-17 | 2026-09-17 | v0.1-phase0 | Smart App Control disabled (D-001) |
 | 1 | ⬜ Not started | | | | |
 | 2 | ⬜ Not started | | | | |
 | 3 | ⬜ Not started | | | | |

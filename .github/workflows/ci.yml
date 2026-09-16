@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Windows / MSVC / Python 3.12
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install build and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install scikit-build-core pybind11 cmake numpy gymnasium pytest
+
+      - name: Configure C++ tests
+        run: cmake -S . -B build/tests -DBUILD_TESTING=ON -DROBOTSIM_WARNINGS_AS_ERRORS=ON
+
+      - name: Build C++ tests
+        run: cmake --build build/tests --config Release
+
+      - name: Run C++ tests
+        run: ctest --test-dir build/tests -C Release --output-on-failure
+
+      - name: Build and install Python package
+        run: python -m pip install . --no-build-isolation -v -Ccmake.define.ROBOTSIM_WARNINGS_AS_ERRORS=ON
+
+      - name: Print build info
+        run: python -c "import robotsim; print(robotsim.build_info())"
+
+      - name: Run Python tests
+        run: python -m pytest
