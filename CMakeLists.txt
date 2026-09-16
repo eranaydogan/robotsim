@@ -13,6 +13,7 @@ else()
 endif()
 option(ROBOTSIM_BUILD_PYTHON "Build the Python extension module" ${ROBOTSIM_PYTHON_DEFAULT})
 option(BUILD_TESTING "Build the C++ unit tests" OFF)
+option(ROBOTSIM_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 # ---------------------------------------------------------------------------
 # Compiler options shared by all project targets
@@ -28,6 +29,8 @@ if(MSVC)
         /fp:precise
         /utf-8
         /EHsc
+        /Zc:__cplusplus
+        $<$<BOOL:${ROBOTSIM_WARNINGS_AS_ERRORS}>:/WX>
     )
 endif()
 
@@ -35,6 +38,7 @@ endif()
 # Core library
 # ---------------------------------------------------------------------------
 add_library(robotsim_core STATIC
+    cpp/src/build_info.cpp
     cpp/src/example.cpp
 )
 target_include_directories(robotsim_core PUBLIC cpp/include)
@@ -69,6 +73,7 @@ if(BUILD_TESTING)
     enable_testing()
     add_executable(robotsim_tests
         cpp/tests/test_main.cpp
+        cpp/tests/test_build_info.cpp
         cpp/tests/test_example.cpp
     )
     target_include_directories(robotsim_tests SYSTEM PRIVATE third_party)
