@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -32,6 +34,16 @@ World::World(Config cfg) : cfg_(std::move(cfg)) {
     obstacles_.push_back(AABB{Vec2{w, -t}, Vec2{w + t, h + t}});   // right
     obstacles_.push_back(AABB{Vec2{-t, -t}, Vec2{w + t, 0.0}});    // bottom
     obstacles_.push_back(AABB{Vec2{-t, h}, Vec2{w + t, h + t}});   // top
+
+    const auto beams = static_cast<std::size_t>(cfg_.lidar_beams);
+    beam_cos_.resize(beams);
+    beam_sin_.resize(beams);
+    for (std::size_t i = 0; i < beams; ++i) {
+        const double angle = kTwoPi * static_cast<double>(i) / static_cast<double>(beams);
+        beam_cos_[i] = std::cos(angle);
+        beam_sin_[i] = std::sin(angle);
+    }
+    map_diagonal_ = std::hypot(w, h);
 
     reset(0);
 }
@@ -93,6 +105,78 @@ StepResult World::step(double v, double omega) {
 
     done_ = result.terminated || result.truncated;
     return result;
+}
+
+void World::scan_lidar(double* out) const {
+    const Vec2 origin = robot_.position;
+    const double c = std::cos(robot_.heading);
+    const double s = std::sin(robot_.heading);
+    const std::size_t beams = beam_cos_.size();
+
+    for (std::size_t i = 0; i < beams; ++i) {
+        // Rotate the robot-frame beam direction into the world frame.
+        const Vec2 dir{beam_cos_[i] * c - beam_sin_[i] * s, beam_sin_[i] * c + beam_cos_[i] * s};
+        double range = cfg_.lidar_range;
+        for (const AABB& box : obstacles_) {
+            const std::optional<double> hit = ray_aabb(origin, dir, box);
+            if (hit && *hit < range) {
+                range = *hit;
+            }
+        }
+        out[i] = range;
+    }
+}
+
+void World::write_observation(float* out) const {
+    const std::size_t beams = beam_cos_.size();
+
+    // Stack buffer for the common case; fall back to the heap for large scans.
+    constexpr std::size_t kStackBeams = 256;
+    double stack_ranges[kStackBeams];
+    std::vector<double> heap_ranges;
+    double* ranges = stack_ranges;
+    if (beams > kStackBeams) {
+        heap_ranges.resize(beams);
+        ranges = heap_ranges.data();
+    }
+    scan_lidar(ranges);
+
+    const double inv_range = 1.0 / cfg_.lidar_range;
+    for (std::size_t i = 0; i < beams; ++i) {
+        out[i] = static_cast<float>(ranges[i] * inv_range);
+    }
+
+    // Goal expressed in the robot frame.
+    const Vec2 delta = goal_ - robot_.position;
+    const double c = std::cos(robot_.heading);
+    const double s = std::sin(robot_.heading);
+    const double forward = delta.x * c + delta.y * s;
+    const double left = -delta.x * s + delta.y * c;
+    const double distance = length(delta);
+
+    double sin_bearing = 0.0;
+    double cos_bearing = 1.0;  // a goal at the robot position counts as straight ahead
+    if (distance > 0.0) {
+        sin_bearing = left / distance;
+        cos_bearing = forward / distance;
+    }
+
+    out[beams] = static_cast<float>(std::min(distance / map_diagonal_, 1.0));
+    out[beams + 1] = static_cast<float>(sin_bearing);
+    out[beams + 2] = static_cast<float>(cos_bearing);
+    out[beams + 3] = static_cast<float>(robot_.v / cfg_.v_max);
+}
+
+std::vector<double> World::lidar() const {
+    std::vector<double> ranges(beam_cos_.size());
+    scan_lidar(ranges.data());
+    return ranges;
+}
+
+std::vector<float> World::observation() const {
+    std::vector<float> obs(static_cast<std::size_t>(observation_size()));
+    write_observation(obs.data());
+    return obs;
 }
 
 void World::set_episode(const RobotState& robot, Vec2 goal) {

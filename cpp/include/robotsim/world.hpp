@@ -47,6 +47,27 @@ public:
     // them. Used by tests and episode replay; no validity checks are made.
     void set_episode(const RobotState& robot, Vec2 goal);
 
+    // Number of elements in the observation vector: lidar_beams + 4.
+    int observation_size() const { return cfg_.lidar_beams + 4; }
+
+    // Writes lidar_beams range readings in metres into out. Beam i points at
+    // heading + i * 2*pi / lidar_beams (beam 0 straight ahead, counter-clockwise)
+    // and is cast from the robot centre. Readings are clamped to lidar_range;
+    // a beam starting inside an obstacle reads 0.
+    void scan_lidar(double* out) const;
+
+    // Writes the normalised observation (observation_size() elements) into out:
+    //   [0, N)  LiDAR ranges / lidar_range                  in [0, 1]
+    //   N       distance to goal / map diagonal (clamped)   in [0, 1]
+    //   N + 1   sin of goal bearing relative to heading     in [-1, 1]
+    //   N + 2   cos of goal bearing relative to heading     in [-1, 1]
+    //   N + 3   last applied v / v_max                      in [0, 1]
+    void write_observation(float* out) const;
+
+    // Allocating convenience wrappers for tests and debugging.
+    std::vector<double> lidar() const;
+    std::vector<float> observation() const;
+
     // True if a circle of the given radius at p lies inside the map and does
     // not touch any obstacle or wall.
     bool is_free(Vec2 p, double radius) const;
@@ -66,6 +87,11 @@ private:
 
     Config cfg_;
     std::vector<AABB> obstacles_;
+    // Beam directions in the robot frame, precomputed so that a scan needs
+    // only one sin/cos pair for the heading instead of one per beam.
+    std::vector<double> beam_cos_;
+    std::vector<double> beam_sin_;
+    double map_diagonal_ = 0.0;
     Rng rng_;
     RobotState robot_{};
     Vec2 goal_{};

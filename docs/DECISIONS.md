@@ -70,3 +70,17 @@ Each entry records a decision, its context and consequences.
 - `validate()` requires `v_max * dt <= robot_radius`, so the robot cannot pass through an obstacle between two collision checks.
 
 **Consequences:** Turning trajectories match the analytic circle within 1e-9. Brief grazing contacts along the swept path can still go undetected; swept-volume checks are out of scope.
+
+---
+
+## D-007: Observation written into caller buffers; scope of determinism
+
+**Context:** Phase 4 stores observations of many environments in one preallocated block. Trigonometric functions from different math libraries are not guaranteed to return correctly rounded results.
+
+**Decision:**
+- `World::write_observation(float*)` and `World::scan_lidar(double*)` write into buffers owned by the caller and do not allocate in the common case.
+- Beam directions are precomputed in the robot frame; a scan evaluates one sin/cos pair for the heading.
+- The goal bearing is encoded by rotating the goal vector into the robot frame, without `atan2`.
+- Determinism is guaranteed bit for bit for the same binary. The random number generator is exact across platforms, but trajectories may differ in the last digit between compilers because `std::sin`/`std::cos` implementations differ.
+
+**Consequences:** Unit tests avoid geometric configurations that depend on the last bit of a trigonometric result, such as rays aimed exactly at a box corner.
