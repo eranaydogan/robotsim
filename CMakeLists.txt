@@ -13,6 +13,7 @@ else()
 endif()
 option(ROBOTSIM_BUILD_PYTHON "Build the Python extension module" ${ROBOTSIM_PYTHON_DEFAULT})
 option(BUILD_TESTING "Build the C++ unit tests" OFF)
+option(ROBOTSIM_BUILD_BENCHMARKS "Build the C++ benchmarks" OFF)
 option(ROBOTSIM_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 # ---------------------------------------------------------------------------
@@ -85,4 +86,12 @@ if(BUILD_TESTING)
     target_include_directories(robotsim_tests SYSTEM PRIVATE third_party)
     target_link_libraries(robotsim_tests PRIVATE robotsim_core robotsim_options)
     add_test(NAME robotsim_tests COMMAND robotsim_tests)
+endif()
+
+# ---------------------------------------------------------------------------
+# C++ benchmarks
+# ---------------------------------------------------------------------------
+if(ROBOTSIM_BUILD_BENCHMARKS)
+    add_executable(robotsim_bench cpp/bench/bench_world.cpp)
+    target_link_libraries(robotsim_bench PRIVATE robotsim_core robotsim_options)
 endif()

@@ -28,14 +28,19 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install scikit-build-core pybind11 cmake numpy gymnasium pytest
 
-      - name: Configure C++ tests
-        run: cmake -S . -B build/tests -DBUILD_TESTING=ON -DROBOTSIM_WARNINGS_AS_ERRORS=ON
+      - name: Configure C++ tests and benchmarks
+        run: cmake -S . -B build/tests -DBUILD_TESTING=ON -DROBOTSIM_BUILD_BENCHMARKS=ON -DROBOTSIM_WARNINGS_AS_ERRORS=ON
 
-      - name: Build C++ tests
+      - name: Build C++ tests and benchmarks
         run: cmake --build build/tests --config Release
 
       - name: Run C++ tests
         run: ctest --test-dir build/tests -C Release --output-on-failure
+
+      # Timings on shared CI runners are not meaningful; this only checks that
+      # the benchmark still builds and runs.
+      - name: Benchmark smoke test
+        run: build/tests/Release/robotsim_bench.exe --quick --reps 1
 
       # CMake definitions are passed through the environment instead of
       # -C arguments: PowerShell splits native arguments that start with '-'
