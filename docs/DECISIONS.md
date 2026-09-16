@@ -44,3 +44,16 @@ Each entry records a decision, its context and consequences.
 **Decision:** Geometry and simulation state use `double`. Only the observation vector exported to Python is `float32`.
 
 **Consequences:** Kinematics tests can use a tolerance of 1e-9 instead of 1e-5. The conversion cost for a 40-element observation is negligible. Axis-aligned boxes name their corners `lo`/`hi` to avoid clashes with the `min`/`max` macros from Windows headers.
+
+---
+
+## D-005: Boundary walls as boxes and seeded versus unseeded reset
+
+**Context:** Collision checks and LiDAR raycasts must treat the map boundary like any other obstacle. Gymnasium passes a seed only on the first `reset`, and Phase 4 auto-resets finished environments without a seed.
+
+**Decision:**
+- `World` appends four 1 m thick boxes just outside the map to the obstacle list.
+- `World::reset(seed)` restarts the random stream; `World::reset()` continues it.
+- Start and goal are placed by rejection sampling with a bounded number of attempts; impossible configurations throw instead of looping forever.
+
+**Consequences:** A single code path handles walls and obstacles. Episode sequences are reproducible from one initial seed.
