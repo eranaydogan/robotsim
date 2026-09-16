@@ -1,0 +1,31 @@
+# Build
+build/
+_skbuild/
+dist/
+out/
+*.egg-info/
+*.pyd
+CMakeUserPresets.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Training outputs
+runs/
+*.zip
+
+# IDE
+.vs/
+.vscode/
+*.user
+
+# Unity
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Ll]ogs/
+unity/[Oo]bj/
+unity/[Uu]ser[Ss]ettings/
