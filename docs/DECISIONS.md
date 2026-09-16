@@ -11,7 +11,7 @@ Each entry records a decision, its context and consequences.
 **Alternatives considered:**
 - Keep Smart App Control enabled and run C++ tests from inside the Python module (which was not blocked). Rejected: couples C++ tests to Python and the same issue would reappear for benchmark executables and the Unity native plugin.
 
-**Decision:** Disable Smart App Control on the development machine. Microsoft Defender antivirus, firewall and SmartScreen remain enabled.
+**Decision:** Disable Smart App Control on the development machine. Real-time antivirus protection (Norton) and SmartScreen remain enabled. Only the `build/` directory is excluded from antivirus scanning, because every build produces new executables without reputation that were otherwise held for scanning and slowed down test runs.
 
 **Consequences:** Locally built executables and DLLs run normally. Python tools are still invoked as modules (`python -m pip`, `python -m pytest`), which works regardless of this setting.
 
@@ -57,3 +57,16 @@ Each entry records a decision, its context and consequences.
 - Start and goal are placed by rejection sampling with a bounded number of attempts; impossible configurations throw instead of looping forever.
 
 **Consequences:** A single code path handles walls and obstacles. Episode sequences are reproducible from one initial seed.
+
+---
+
+## D-006: Exact unicycle integration, collision priority and tunnelling limit
+
+**Context:** The project plan specified explicit Euler integration. Euler drifts outward on constant turns, and collisions are only checked at discrete poses.
+
+**Decision:**
+- Integrate the unicycle model exactly for constant `(v, omega)` over `dt`, falling back to a straight line when `|omega| < 1e-9`.
+- If the goal is reached and a collision occurs in the same step, the step counts as a collision, not a success.
+- `validate()` requires `v_max * dt <= robot_radius`, so the robot cannot pass through an obstacle between two collision checks.
+
+**Consequences:** Turning trajectories match the analytic circle within 1e-9. Brief grazing contacts along the swept path can still go undetected; swept-volume checks are out of scope.

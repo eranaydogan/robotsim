@@ -78,6 +78,7 @@ if(BUILD_TESTING)
         cpp/tests/test_build_info.cpp
         cpp/tests/test_geometry.cpp
         cpp/tests/test_rng.cpp
+        cpp/tests/test_step.cpp
         cpp/tests/test_world.cpp
     )
     target_include_directories(robotsim_tests SYSTEM PRIVATE third_party)

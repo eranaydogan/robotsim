@@ -45,6 +45,12 @@ void validate(const Config& cfg) {
     require(cfg.min_start_goal_distance >= 0.0, "min_start_goal_distance must be non-negative");
     require(cfg.spawn_clearance >= 0.0, "spawn_clearance must be non-negative");
     require(cfg.max_spawn_attempts > 0, "max_spawn_attempts must be positive");
+    // Collisions are checked at discrete poses. The robot moves at most
+    // v_max * dt per step; keeping this below its radius means it cannot pass
+    // through an obstacle between two checks. Brief grazing contacts along the
+    // swept path can still go undetected.
+    require(cfg.v_max * cfg.dt <= cfg.robot_radius,
+            "v_max * dt must not exceed robot_radius (the robot could tunnel through obstacles)");
     const double margin = 2.0 * (cfg.robot_radius + cfg.spawn_clearance);
     require(cfg.map_width > margin && cfg.map_height > margin,
             "map is too small for the robot and spawn clearance");

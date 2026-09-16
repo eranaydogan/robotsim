@@ -16,6 +16,14 @@ struct RobotState {
     double omega = 0.0;    // last applied angular velocity (rad/s)
 };
 
+struct StepResult {
+    double reward = 0.0;
+    bool terminated = false;  // goal reached or collision
+    bool truncated = false;   // max_steps reached without termination
+    bool is_success = false;
+    bool collision = false;
+};
+
 // A single navigation environment.
 class World {
 public:
@@ -28,6 +36,17 @@ public:
     void reset(std::uint64_t seed);
     void reset();
 
+    // Advances the simulation by one time step with the commanded linear
+    // velocity v (m/s) and angular velocity omega (rad/s). Commands are clamped
+    // to [0, v_max] and [-omega_max, omega_max].
+    // Throws std::invalid_argument for non-finite commands and std::logic_error
+    // if the episode has already ended (call reset first).
+    StepResult step(double v, double omega);
+
+    // Sets the robot state and goal directly and starts a new episode from
+    // them. Used by tests and episode replay; no validity checks are made.
+    void set_episode(const RobotState& robot, Vec2 goal);
+
     // True if a circle of the given radius at p lies inside the map and does
     // not touch any obstacle or wall.
     bool is_free(Vec2 p, double radius) const;
@@ -36,12 +55,14 @@ public:
     const RobotState& robot() const { return robot_; }
     Vec2 goal() const { return goal_; }
     int step_count() const { return step_count_; }
+    bool done() const { return done_; }
 
     // Interior obstacles followed by the four boundary walls.
     const std::vector<AABB>& obstacles() const { return obstacles_; }
 
 private:
     Vec2 sample_free_point(double radius);
+    bool in_collision(Vec2 p) const;
 
     Config cfg_;
     std::vector<AABB> obstacles_;
@@ -49,6 +70,7 @@ private:
     RobotState robot_{};
     Vec2 goal_{};
     int step_count_ = 0;
+    bool done_ = false;
 };
 
 }  // namespace robotsim
