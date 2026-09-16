@@ -24,3 +24,13 @@ Each entry records a decision, its context and consequences.
 **Decision:** A plain CMake configure builds the core library and tests only. The Python module is built when CMake is invoked by scikit-build-core (`pip install`), or explicitly with `-DROBOTSIM_BUILD_PYTHON=ON`.
 
 **Consequences:** C++ tests can run without a Python environment. Two build directories are used: `build/tests` and `build/<wheel_tag>`.
+
+---
+
+## D-003: CI uses the latest Windows runner image
+
+**Context:** Local development uses Visual Studio 2022 (MSVC 19.44). The `windows-latest` GitHub runner ships Visual Studio 2026 (MSVC 19.51).
+
+**Decision:** Keep `windows-latest` instead of pinning an older image. CI builds with `/WX`, so every push also verifies that the code is warning-free on a newer MSVC release.
+
+**Consequences:** A new compiler warning in CI may appear before it appears locally. Such failures are treated as real issues. CMake definitions for the Python build are passed via `SKBUILD_CMAKE_DEFINE`, because PowerShell (the default shell on Windows runners) splits `-C` arguments that contain dots.
