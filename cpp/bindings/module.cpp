@@ -2,7 +2,6 @@
 #include <pybind11/stl.h>
 
 #include "robotsim/build_info.hpp"
-#include "robotsim/example.hpp"
 
 namespace py = pybind11;
 
@@ -11,7 +10,4 @@ PYBIND11_MODULE(_robotsim, m) {
 
     m.def("build_info", &robotsim::build_info,
           "Compiler and build configuration of the C++ core.");
-
-    m.def("add", &robotsim::add, py::arg("a"), py::arg("b"),
-          "Add two integers (Phase 0 smoke test).");
 }

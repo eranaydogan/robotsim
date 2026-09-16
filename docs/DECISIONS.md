@@ -34,3 +34,13 @@ Each entry records a decision, its context and consequences.
 **Decision:** Keep `windows-latest` instead of pinning an older image. CI builds with `/WX`, so every push also verifies that the code is warning-free on a newer MSVC release.
 
 **Consequences:** A new compiler warning in CI may appear before it appears locally. Such failures are treated as real issues. CMake definitions for the Python build are passed via `SKBUILD_CMAKE_DEFINE`, because PowerShell (the default shell on Windows runners) splits `-C` arguments that contain dots.
+
+---
+
+## D-004: Double precision for simulation state, float32 for observations
+
+**Context:** Robot poses are integrated over up to 500 steps, and unit tests compare trajectories against analytic solutions. Neural network inputs are conventionally float32.
+
+**Decision:** Geometry and simulation state use `double`. Only the observation vector exported to Python is `float32`.
+
+**Consequences:** Kinematics tests can use a tolerance of 1e-9 instead of 1e-5. The conversion cost for a 40-element observation is negligible. Axis-aligned boxes name their corners `lo`/`hi` to avoid clashes with the `min`/`max` macros from Windows headers.

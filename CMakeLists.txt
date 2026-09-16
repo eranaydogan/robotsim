@@ -39,7 +39,7 @@ endif()
 # ---------------------------------------------------------------------------
 add_library(robotsim_core STATIC
     cpp/src/build_info.cpp
-    cpp/src/example.cpp
+    cpp/src/geometry.cpp
 )
 target_include_directories(robotsim_core PUBLIC cpp/include)
 target_link_libraries(robotsim_core PRIVATE robotsim_options)
@@ -74,7 +74,7 @@ if(BUILD_TESTING)
     add_executable(robotsim_tests
         cpp/tests/test_main.cpp
         cpp/tests/test_build_info.cpp
-        cpp/tests/test_example.cpp
+        cpp/tests/test_geometry.cpp
     )
     target_include_directories(robotsim_tests SYSTEM PRIVATE third_party)
     target_link_libraries(robotsim_tests PRIVATE robotsim_core robotsim_options)
