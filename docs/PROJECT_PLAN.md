@@ -673,7 +673,7 @@ Evaluate both on a series of perturbed environments (increasing noise, different
 | Phase | Status | Start | End | Tag | Notes |
 |---|---|---|---|---|---|
 | 0 | ✅ Done | 2026-09-17 | 2026-09-17 | v0.1-phase0 | Smart App Control disabled (D-001) |
-| 1 | ⬜ Not started | | | | |
+| 1 | ✅ Done | 2026-09-17 | 2026-09-18 | v0.2-phase1 | 518,803 steps/s single core (5.2x target) |
 | 2 | ⬜ Not started | | | | |
 | 3 | ⬜ Not started | | | | |
 | 4 | ⬜ Not started | | | | |

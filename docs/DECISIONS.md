@@ -84,3 +84,15 @@ Each entry records a decision, its context and consequences.
 - Determinism is guaranteed bit for bit for the same binary. The random number generator is exact across platforms, but trajectories may differ in the last digit between compilers because `std::sin`/`std::cos` implementations differ.
 
 **Consequences:** Unit tests avoid geometric configurations that depend on the last bit of a trigonometric result, such as rays aimed exactly at a box corner.
+
+**Measurement (Phase 1 benchmark, 1,000,000 steps):** GCC 13 on Linux and MSVC 19.44 on Windows produced the same number of episodes (26,723), but the accumulated checksum differed in the last hexadecimal digit (`0x1.0835edd13906fp+24` versus `0x1.0835edd139067p+24`, about 3e-8). Episode outcomes matched; bit-level results did not. Differences between the math library trigonometric functions are the most likely cause.
+
+---
+
+## D-008: Benchmark methodology
+
+**Context:** The first benchmark runs on a hybrid CPU (8 performance and 16 efficiency cores) varied by 45 percent between repetitions of identical work, while the checksum stayed the same. The scheduler moved the single benchmark thread between core types, and background applications made it worse.
+
+**Decision:** Every benchmark runs one untimed warm-up followed by several timed repetitions, and reports the median with the minimum and maximum. `--pin` (the default in the runner script) pins the thread to a logical processor of the highest efficiency class reported by `GetLogicalProcessorInformationEx`. The report records CPU, power plan and mode, AC status and commit. A checksum of the simulated data is printed so that a change in speed can be separated from a change in behaviour.
+
+**Consequences:** Three consecutive runs agreed within 0.2 percent. Peak throughput is slightly lower than an unpinned run, because the scheduler can no longer migrate the thread to the fastest available core; repeatability is worth more than the peak number. Reported figures are single-core and must not be extrapolated to the multi-threaded results of Phase 4.
