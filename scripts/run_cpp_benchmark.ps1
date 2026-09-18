@@ -11,6 +11,9 @@ Number of timed repetitions per benchmark.
 .PARAMETER Quick
 Run 10x fewer iterations.
 
+.PARAMETER NoPin
+Do not pin the benchmark thread to a performance core.
+
 .PARAMETER Note
 Free-text note added to the report, e.g. vendor performance profile.
 
@@ -21,6 +24,7 @@ param(
     [string]$Output = "",
     [int]$Reps = 5,
     [switch]$Quick,
+    [switch]$NoPin,
     [string]$Note = ""
 )
 
@@ -36,6 +40,7 @@ if ($LASTEXITCODE -ne 0) { throw "Benchmark build failed" }
 $exe = Join-Path $buildDir "Release\robotsim_bench.exe"
 $benchArgs = @("--reps", "$Reps")
 if ($Quick) { $benchArgs += "--quick" }
+if (-not $NoPin) { $benchArgs += "--pin" }
 $result = & $exe @benchArgs
 if ($LASTEXITCODE -ne 0) { throw "Benchmark run failed" }
 

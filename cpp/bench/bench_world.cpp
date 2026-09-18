@@ -1,13 +1,22 @@
 // Micro-benchmark for the single-environment C++ core.
 //
-// Usage: robotsim_bench [--quick] [--reps N]
+// Usage: robotsim_bench [--quick] [--reps N] [--pin]
 //   --quick   run 10x fewer iterations (smoke test for CI)
 //   --reps N  number of timed repetitions per benchmark (default 5)
+//   --pin     pin the benchmark thread to one performance core (Windows only).
+//             On hybrid CPUs the scheduler may otherwise move the thread
+//             between performance and efficiency cores during a run.
 //
 // Each benchmark runs a fixed, seeded workload. The median rate over all
 // repetitions is reported together with the minimum and maximum. A checksum of
 // the simulated data is printed so that runs of the same binary can be checked
 // for doing identical work (see D-007 for determinism across compilers).
+
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -17,6 +26,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -57,6 +67,62 @@ Stats measure(int reps, std::int64_t iterations, const std::function<void()>& bo
     return stats;
 }
 
+// Pins the calling thread to a single logical processor of the highest
+// efficiency class (a performance core on hybrid CPUs). The last such core is
+// chosen to stay away from logical processor 0, which usually handles more
+// interrupts. Returns a description, or an empty string if pinning failed.
+std::string pin_to_performance_core() {
+#ifdef _WIN32
+    DWORD length = 0;
+    GetLogicalProcessorInformationEx(RelationProcessorCore, nullptr, &length);
+    if (length == 0) {
+        return {};
+    }
+    // malloc returns memory aligned for any fundamental type, which the
+    // variable-length records require.
+    std::unique_ptr<void, decltype(&std::free)> buffer(std::malloc(length), &std::free);
+    if (!buffer) {
+        return {};
+    }
+    auto* const base = static_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buffer.get());
+    if (!GetLogicalProcessorInformationEx(RelationProcessorCore, base, &length)) {
+        return {};
+    }
+
+    int best_cpu = -1;
+    int best_class = -1;
+    for (DWORD offset = 0; offset < length;) {
+        const auto* entry = static_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(
+            static_cast<void*>(static_cast<char*>(buffer.get()) + offset));
+        const PROCESSOR_RELATIONSHIP& core = entry->Processor;
+        const GROUP_AFFINITY& group = core.GroupMask[0];
+        if (group.Group == 0 && group.Mask != 0) {
+            int first_cpu = 0;
+            while (((group.Mask >> first_cpu) & 1) == 0) {
+                ++first_cpu;
+            }
+            const int efficiency = static_cast<int>(core.EfficiencyClass);
+            if (efficiency >= best_class) {
+                best_class = efficiency;
+                best_cpu = first_cpu;
+            }
+        }
+        offset += entry->Size;
+    }
+    if (best_cpu < 0) {
+        return {};
+    }
+    const DWORD_PTR mask = static_cast<DWORD_PTR>(1) << best_cpu;
+    if (SetThreadAffinityMask(GetCurrentThread(), mask) == 0) {
+        return {};
+    }
+    return "logical processor " + std::to_string(best_cpu) + " (efficiency class " +
+           std::to_string(best_class) + ")";
+#else
+    return {};
+#endif
+}
+
 void print_row(const char* name, std::int64_t iterations, const Stats& s) {
     std::printf("| %-26s | %11" PRId64 " | %12.0f | %12.0f | %12.0f |\n", name, iterations,
                 s.median, s.min, s.max);
@@ -66,16 +132,24 @@ void print_row(const char* name, std::int64_t iterations, const Stats& s) {
 
 int main(int argc, char** argv) {
     bool quick = false;
+    bool pin = false;
     int reps = 5;
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--quick") == 0) {
             quick = true;
+        } else if (std::strcmp(argv[i], "--pin") == 0) {
+            pin = true;
         } else if (std::strcmp(argv[i], "--reps") == 0 && i + 1 < argc) {
             reps = std::max(1, std::atoi(argv[++i]));
         } else {
-            std::fprintf(stderr, "usage: robotsim_bench [--quick] [--reps N]\n");
+            std::fprintf(stderr, "usage: robotsim_bench [--quick] [--reps N] [--pin]\n");
             return 2;
         }
+    }
+    std::string pinned = "no";
+    if (pin) {
+        const std::string where = pin_to_performance_core();
+        pinned = where.empty() ? "requested but not available" : where;
     }
     const std::int64_t scale = quick ? 10 : 1;
 
@@ -90,8 +164,9 @@ int main(int argc, char** argv) {
     std::printf("- Hardware threads: %u\n", std::thread::hardware_concurrency());
     std::printf("- Configuration: default (%d LiDAR beams, %zu obstacles + 4 walls)\n",
                 cfg.lidar_beams, cfg.obstacles.size());
-    std::printf("- Repetitions: %d timed runs after one warm-up, single thread%s\n\n", reps,
+    std::printf("- Repetitions: %d timed runs after one warm-up, single thread%s\n", reps,
                 quick ? ", quick mode" : "");
+    std::printf("- Thread pinned: %s\n\n", pinned.c_str());
 
     std::printf("| %-26s | %11s | %12s | %12s | %12s |\n", "Benchmark", "Iterations",
                 "Median /s", "Min /s", "Max /s");
