@@ -36,13 +36,16 @@ class RobotNavEnv(gym.Env):
     (``terminated``), or after ``max_steps`` steps (``truncated``).
     """
 
-    metadata = {"render_modes": [], "render_fps": 10}
+    metadata = {"render_modes": ["rgb_array"], "render_fps": 10}
 
     def __init__(self, config: Config | None = None, render_mode: str | None = None) -> None:
         super().__init__()
         self._world = World(config if config is not None else Config())
         cfg = self._world.config
+        if render_mode is not None and render_mode not in self.metadata["render_modes"]:
+            raise ValueError(f"unsupported render mode: {render_mode!r}")
         self.render_mode = render_mode
+        self._renderer: Any = None
 
         size = self._world.observation_size
         # LiDAR and distance are in [0, 1]; the bearing components are in [-1, 1].
@@ -71,6 +74,8 @@ class RobotNavEnv(gym.Env):
         # here reproduces the whole sequence of episodes.
         world_seed = int(self.np_random.integers(0, 2**64, dtype=np.uint64))
         self._world.reset(world_seed)
+        if self._renderer is not None:
+            self._renderer.clear_trail()
         return self._world.observation(), self._info(is_success=False, collision=False)
 
     def step(
@@ -93,6 +98,20 @@ class RobotNavEnv(gym.Env):
             bool(result.truncated),
             self._info(is_success=result.is_success, collision=result.collision),
         )
+
+    def render(self) -> np.ndarray | None:
+        """Returns an RGB image of the current state, or None without a render mode."""
+        if self.render_mode is None:
+            return None
+        if self._renderer is None:
+            # Imported lazily so that matplotlib is not needed for training.
+            from .render import Renderer
+
+            self._renderer = Renderer(self._world)
+        return self._renderer.frame()
+
+    def close(self) -> None:
+        self._renderer = None
 
     def _info(self, *, is_success: bool, collision: bool) -> dict[str, Any]:
         return {

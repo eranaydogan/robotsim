@@ -179,3 +179,36 @@ def test_config_defaults_come_from_cpp():
     assert cfg.lidar_beams == 36
     assert len(cfg.obstacles) == 10
     assert cfg.obstacles[0] == pytest.approx((1.5, 2.0, 4.0, 2.5))
+
+
+def test_render_returns_an_rgb_frame():
+    pytest.importorskip("matplotlib")
+    env = gym.make("RobotNav-v0", render_mode="rgb_array").unwrapped
+    env.reset(seed=5)
+    for _ in range(5):
+        _, _, terminated, truncated, _ = env.step(np.array([0.5, 0.2]))
+        if terminated or truncated:
+            env.reset()
+    frame = env.render()
+    assert frame.dtype == np.uint8
+    assert frame.ndim == 3 and frame.shape[2] == 3
+    # The frame must contain more than a uniform background.
+    assert len(np.unique(frame.reshape(-1, 3), axis=0)) > 5
+    env.close()
+
+
+def test_check_env_including_render():
+    pytest.importorskip("matplotlib")
+    env = gym.make("RobotNav-v0", render_mode="rgb_array").unwrapped
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        check_env(env)
+
+
+def test_render_without_mode_returns_none():
+    assert robotsim.RobotNavEnv().render() is None
+
+
+def test_unsupported_render_mode_raises():
+    with pytest.raises(ValueError):
+        robotsim.RobotNavEnv(render_mode="human")
