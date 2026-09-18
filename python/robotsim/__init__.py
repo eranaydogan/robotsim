@@ -4,7 +4,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from gymnasium.envs.registration import register
 
-from ._robotsim import Config, StepResult, World, build_info
+from ._robotsim import Config, StepResult, World, build_info, pin_to_performance_core
 from .env import RobotNavEnv
 
 try:
@@ -20,5 +20,6 @@ __all__ = [
     "StepResult",
     "World",
     "build_info",
+    "pin_to_performance_core",
     "__version__",
 ]

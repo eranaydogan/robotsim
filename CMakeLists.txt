@@ -42,6 +42,7 @@ add_library(robotsim_core STATIC
     cpp/src/build_info.cpp
     cpp/src/config.cpp
     cpp/src/geometry.cpp
+    cpp/src/platform.cpp
     cpp/src/world.cpp
 )
 target_include_directories(robotsim_core PUBLIC cpp/include)

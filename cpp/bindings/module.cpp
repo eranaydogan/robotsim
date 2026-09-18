@@ -10,6 +10,7 @@
 #include "robotsim/build_info.hpp"
 #include "robotsim/config.hpp"
 #include "robotsim/geometry.hpp"
+#include "robotsim/platform.hpp"
 #include "robotsim/world.hpp"
 
 namespace py = pybind11;
@@ -56,6 +57,9 @@ PYBIND11_MODULE(_robotsim, m) {
 
     m.def("build_info", &robotsim::build_info,
           "Compiler and build configuration of the C++ core.");
+    m.def("pin_to_performance_core", &robotsim::pin_to_performance_core,
+          "Pins the calling thread to one performance core for stable benchmark "
+          "timings. Returns a description, or an empty string if unavailable.");
 
     py::class_<robotsim::Config>(m, "Config",
                                  "Parameters of the environment; SI units (m, s, rad).")

@@ -212,3 +212,9 @@ def test_render_without_mode_returns_none():
 def test_unsupported_render_mode_raises():
     with pytest.raises(ValueError):
         robotsim.RobotNavEnv(render_mode="human")
+
+
+def test_pin_to_performance_core_returns_a_description():
+    # Pinning is a Windows feature; elsewhere it returns an empty string.
+    where = robotsim.pin_to_performance_core()
+    assert isinstance(where, str)
