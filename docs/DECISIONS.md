@@ -118,3 +118,27 @@ Each entry records a decision, its context and consequences.
 **Decision:** `Renderer` uses `Figure` and `FigureCanvasAgg` directly instead of `pyplot`: no global state, no GUI backend, and one figure reused across frames. It is imported lazily on the first `render()` call. matplotlib is an optional extra (`viz`); the render tests are skipped when it is missing and CI installs it so they run. The only render mode is `rgb_array`; a legend names the robot, goal, LiDAR, path and obstacles.
 
 **Consequences:** Training does not import matplotlib. The trail shows only the steps that were rendered, which is documented on the class.
+
+---
+
+## D-011: Three seed pools and a tuned baseline
+
+**Context:** A single training run can succeed by luck, and a weak baseline makes any agent look good. Model selection and reporting must not share episodes.
+
+**Decision:**
+- Three disjoint seed pools: training environments start from seed 0, the callback that monitors progress uses seeds from 1,500,000, and the reported evaluation uses seeds from 1,000,000.
+- Every policy, baseline or agent, is measured with the same `robotsim.evaluate` protocol: 1,000 episodes, deterministic actions, success, collision and timeout reported separately.
+- The rule-based controller's gains come from a small grid search, so PPO is compared against a tuned controller rather than a straw man. Tuning raised it from 52% to 73% success.
+- Results are reported over three training seeds as mean and standard deviation.
+
+**Consequences:** The reported figures are never measured on episodes used for training or model selection. Collision rate turned out to vary more across seeds (2.0% to 9.0%) than success rate, which is stated in the README rather than hidden behind the mean.
+
+---
+
+## D-012: Loading Stable-Baselines3 models through memory
+
+**Context:** With torch 2.14 and Stable-Baselines3 2.9 on Windows, `PPO.load` fails with "PytorchStreamReader failed reading file .data/serialization_id". The archives are intact: the same members load correctly from a `BytesIO` or from an extracted file, and the identical versions work on Linux. Stable-Baselines3 passes torch an open member of the model archive.
+
+**Decision:** `robotsim.sb3.load_ppo` wraps `torch.load` for the duration of the call so that file-like inputs are read into memory first, then restores the original function.
+
+**Consequences:** Existing checkpoints load unchanged; saving is untouched. The workaround is scoped to one call and documented for removal once Stable-Baselines3 materialises archive members itself.
