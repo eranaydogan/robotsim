@@ -96,3 +96,25 @@ Each entry records a decision, its context and consequences.
 **Decision:** Every benchmark runs one untimed warm-up followed by several timed repetitions, and reports the median with the minimum and maximum. `--pin` (the default in the runner script) pins the thread to a logical processor of the highest efficiency class reported by `GetLogicalProcessorInformationEx`. The report records CPU, power plan and mode, AC status and commit. A checksum of the simulated data is printed so that a change in speed can be separated from a change in behaviour.
 
 **Consequences:** Three consecutive runs agreed within 0.2 percent. Peak throughput is slightly lower than an unpinned run, because the scheduler can no longer migrate the thread to the fastest available core; repeatability is worth more than the peak number. Reported figures are single-core and must not be extrapolated to the multi-threaded results of Phase 4.
+
+---
+
+## D-009: One source of truth for configuration, and seeding from the Gymnasium generator
+
+**Context:** The plan called for a Python dataclass mirroring the C++ `Config`. Duplicated defaults drift apart. Gymnasium passes a seed to `reset` only on the first call, while episodes continue afterwards.
+
+**Decision:**
+- The C++ `Config` is exposed directly through pybind11; `robotsim.Config()` carries the same defaults as the C++ code, and a test asserts a few of them.
+- `RobotNavEnv.reset` draws the 64-bit seed of the C++ environment from `self.np_random` on every reset.
+
+**Consequences:** Defaults exist in exactly one place. A single seed reproduces the whole sequence of episodes, which a test verifies; the cost is one 64-bit draw per episode.
+
+---
+
+## D-010: Rendering with the Agg backend, matplotlib as an optional dependency
+
+**Context:** Rendering is needed for debugging, for the render check in `check_env` and for the recordings of Phase 6, but not for training.
+
+**Decision:** `Renderer` uses `Figure` and `FigureCanvasAgg` directly instead of `pyplot`: no global state, no GUI backend, and one figure reused across frames. It is imported lazily on the first `render()` call. matplotlib is an optional extra (`viz`); the render tests are skipped when it is missing and CI installs it so they run. The only render mode is `rgb_array`; a legend names the robot, goal, LiDAR, path and obstacles.
+
+**Consequences:** Training does not import matplotlib. The trail shows only the steps that were rendered, which is documented on the class.

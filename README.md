@@ -4,7 +4,9 @@
 
 C++17 mobile robot navigation environment with a Gymnasium-compatible Python interface.
 
-**Status:** Phase 1 complete (C++ simulation core). See the [project plan](docs/PROJECT_PLAN.md).
+**Status:** Phase 2 complete (Gymnasium interface). See the [project plan](docs/PROJECT_PLAN.md).
+
+![Rendered episode](docs/results/phase2_render.png)
 
 ## Simulation core
 
@@ -14,16 +16,38 @@ C++17 mobile robot navigation environment with a Gymnasium-compatible Python int
 - Progress-based reward with goal bonus and collision penalty
 - Portable xoshiro256** random number generator; bit-for-bit deterministic for a given binary
 
-## Phase 1 results
+## Python interface
+
+``````python
+import gymnasium as gym
+import robotsim  # registers RobotNav-v0
+
+env = gym.make("RobotNav-v0")
+obs, info = env.reset(seed=0)
+obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
+``````
+
+- Passes `gymnasium.utils.env_checker.check_env` with warnings treated as errors, render check included
+- One seed reproduces the whole sequence of episodes, not just the first one
+- Environment parameters are defined once in C++ and exposed as `robotsim.Config`
+- `render_mode="rgb_array"` draws obstacles, LiDAR beams, the path and the goal
+
+## Results
 
 Single thread pinned to one performance core, Intel Core i9-13900HX, MSVC 19.44, Release build:
 
-| Workload | Steps per second |
-|---|---|
-| step + observation (36 LiDAR beams) | **518,803** |
+| Layer | Steps per second | Per step |
+|---|---|---|
+| C++ core, step + observation | 518,803 | 1.93 us |
+| `World.step` through the bindings | 1,211,751 | 0.83 us |
+| `World.step` + `observation` | 327,426 | 3.05 us |
+| `RobotNavEnv.step` | 133,959 | 7.47 us |
 
-The target was 100,000 steps per second. Three consecutive runs agreed within 0.2 percent.
-Full report: [docs/results/phase1_speed.md](docs/results/phase1_speed.md).
+The simulation itself costs about a microsecond per step; the Python layers add
+roughly six more, mostly one NumPy allocation per observation and the Gymnasium
+bookkeeping. Amortizing that cost over many environments is the subject of Phase 4.
+
+Full reports: [C++ core](docs/results/phase1_speed.md), [Python interface](docs/results/phase2_speed.md).
 
 ## Requirements
 
@@ -33,25 +57,26 @@ Full report: [docs/results/phase1_speed.md](docs/results/phase1_speed.md).
 
 ## Build and test
 
-```powershell
+``````powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install scikit-build-core pybind11 cmake numpy gymnasium pytest
+python -m pip install scikit-build-core pybind11 cmake numpy gymnasium pytest matplotlib
 
 # C++ unit tests
 cmake -S . -B build/tests -DBUILD_TESTING=ON
 cmake --build build/tests --config Release
 ctest --test-dir build/tests -C Release --output-on-failure
 
-# C++ benchmark and report
-.\scripts\run_cpp_benchmark.ps1
-
 # Python package (editable) and tests
 python -m pip install -e . --no-build-isolation
 python -m pytest
-```
 
-After changing C++ code, rerun the `pip install` command to rebuild the module.
+# Benchmarks
+.\scripts\run_cpp_benchmark.ps1
+python scripts\benchmark_env.py
+``````
+
+After changing C++ code, rerun the ``pip install`` command to rebuild the module.
 
 ## Documentation
 

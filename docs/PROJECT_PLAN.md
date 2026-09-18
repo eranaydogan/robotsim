@@ -674,7 +674,7 @@ Evaluate both on a series of perturbed environments (increasing noise, different
 |---|---|---|---|---|---|
 | 0 | ✅ Done | 2026-09-17 | 2026-09-17 | v0.1-phase0 | Smart App Control disabled (D-001) |
 | 1 | ✅ Done | 2026-09-17 | 2026-09-18 | v0.2-phase1 | 518,803 steps/s single core (5.2x target) |
-| 2 | ⬜ Not started | | | | |
+| 2 | ✅ Done | 2026-09-18 | 2026-09-18 | v0.3-phase2 | check_env clean; 133,959 steps/s through the Gymnasium API |
 | 3 | ⬜ Not started | | | | |
 | 4 | ⬜ Not started | | | | |
 | 5 | ⬜ Not started | | | | |
